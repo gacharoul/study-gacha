@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Gacha Reward Wheel</title>
+<style>
+:root{--bg:#0d0e12;--panel:#15171e;--line:#2a2d3a;--txt:#e8eaf2;--dim:#8a90a6;--purple:#a855f7;--cyan:#22d3ee;
+--common:#8b93a7;--rare:#38bdf8;--epic:#fbbf24;--ultra:#e879f9;--pink:#ff2d6f}
+*{box-sizing:border-box;margin:0}
+body{background:radial-gradient(circle at 20% 0%,#1a1030 0%,var(--bg) 55%);color:var(--txt);font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;padding:20px}
+h1{font-size:1.5rem;letter-spacing:.15em;text-align:center;margin-bottom:18px;background:linear-gradient(90deg,var(--cyan),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;text-transform:uppercase}
+.grid{display:grid;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr);gap:20px;max-width:1100px;margin:auto;align-items:start}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 0 24px rgba(168,85,247,.12)}
+.panel h2{font-size:.8rem;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;margin-bottom:12px}
+.leftcol{display:flex;flex-direction:column;gap:20px}
+.left{display:flex;flex-direction:column;align-items:center;gap:14px}
+.wheel-wrap{position:relative;width:min(440px,86vw);aspect-ratio:1}
+#wheel{width:100%;height:100%;display:block;filter:drop-shadow(0 0 22px rgba(168,85,247,.45))}
+.arrow{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:32px solid var(--cyan);filter:drop-shadow(0 0 8px var(--cyan));z-index:2}
+button{font:inherit;cursor:pointer;color:var(--txt);background:#1e2130;border:1px solid var(--line);border-radius:10px;padding:8px 14px;transition:.15s}
+button:hover:not(:disabled){border-color:var(--cyan);box-shadow:0 0 10px rgba(34,211,238,.35)}
+button:disabled{opacity:.45;cursor:not-allowed}
+/* SPIN button: locked (gray) by default, rainbow-rotating when ready */
+#spin{font-size:1.3rem;font-weight:800;letter-spacing:.3em;padding:14px 56px;border:none;border-radius:999px;background:linear-gradient(90deg,var(--purple),var(--cyan));color:#0d0e12;box-shadow:0 0 26px rgba(168,85,247,.6)}
+#spin:disabled{background:#242633;color:#6b7086;box-shadow:none;filter:grayscale(1);opacity:.85;pointer-events:none}
+#spin.ready{background:linear-gradient(90deg,#ff0080,#ff8c00,#ffe600,#00ff88,#00cfff,#7a00ff,#ff0080);background-size:300% 100%;animation:spinflash 1.2s linear infinite;box-shadow:0 0 34px rgba(34,211,238,.8)}
+@keyframes spinflash{to{background-position:300% 0}}
+#spin:hover:not(:disabled){transform:scale(1.04)}
+.lock{font-weight:700;font-size:.85rem;text-align:center;padding:9px 12px;border-radius:8px;letter-spacing:.03em;width:100%}
+.lock.locked{color:#ff3b5c;border:1px solid #7f1d2d;background:rgba(127,29,45,.15);text-shadow:0 0 8px rgba(255,59,92,.6);animation:lockpulse 1.4s ease-in-out infinite}
+@keyframes lockpulse{50%{opacity:.5;text-shadow:0 0 16px #ff3b5c}}
+.lock.open{color:var(--cyan);border:1px solid var(--cyan);background:rgba(34,211,238,.1);text-shadow:0 0 12px var(--cyan);box-shadow:0 0 18px rgba(34,211,238,.45)}
+.right{display:flex;flex-direction:column;gap:20px}
+.dim{color:var(--dim);font-size:.8rem}
+.streak{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.streak .num{font-size:2.6rem;font-weight:800;color:var(--epic);text-shadow:0 0 14px rgba(251,191,36,.6);min-width:56px}
+.badge{font-size:.75rem;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.badge.on{color:#0d0e12;background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.stats{display:flex;gap:18px;margin-bottom:12px;color:var(--dim);font-size:.85rem;flex-wrap:wrap}
+.stats b{color:var(--txt);font-size:1.15rem}
+.prow{display:grid;grid-template-columns:78px 1fr 68px;gap:8px;align-items:center;margin:7px 0;font-size:.85rem}
+.bar{height:8px;background:#0b0c10;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px;transition:width .4s}
+#hist{list-style:none;max-height:240px;overflow-y:auto;padding:0;font-size:.85rem}
+#hist li{padding:7px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+#hist li span:first-child{font-weight:600}
+#hist small{color:var(--dim);white-space:nowrap}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+/* Token dashboard */
+.cur{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.tok{font-size:2.6rem;font-weight:800;color:var(--cyan);text-shadow:0 0 18px rgba(34,211,238,.8),0 0 36px rgba(34,211,238,.4);white-space:nowrap}
+#tokPanel{border-color:rgba(34,211,238,.45);box-shadow:0 0 26px rgba(34,211,238,.18)}
+#tokPanel.warn{animation:warnflash .6s ease 3}
+@keyframes warnflash{50%{box-shadow:0 0 34px #ff3b5c;border-color:#ff3b5c}}
+/* Dungeon Monitor Pane */
+#dungeon{font-family:"Courier New",Consolas,monospace}
+#dungeon h2{font-family:"Segoe UI",system-ui,sans-serif}
+.mon{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+#avatar{width:84px;height:84px;image-rendering:pixelated;background:#0b0c10;border:3px solid var(--purple);box-shadow:4px 4px 0 #000,0 0 16px rgba(168,85,247,.55);flex:none;transition:filter .4s}
+#dungeon.idle #avatar{filter:grayscale(.85) brightness(.55)}
+#dungeon.active #avatar{animation:bob 1s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.mi{flex:1;min-width:0}
+.mname{font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-size:.95rem}
+.hp{position:relative;height:22px;background:#0b0c10;border:3px solid #e8eaf2;box-shadow:3px 3px 0 #000}
+.hp i{display:block;height:100%;width:100%;background:#ff2d6f;box-shadow:0 0 14px #ff2d6f,0 0 28px rgba(255,45,111,.6);transition:width .25s linear}
+.hp::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),#0b0c10 calc(5% - 2px) 5%)}
+.hptxt{font-size:.75rem;color:var(--dim);margin-top:4px}
+.drow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;flex-wrap:wrap}
+select{font:inherit;background:#0f1117;color:var(--txt);border:2px solid var(--purple);border-radius:0;padding:7px 8px;max-width:100%}
+select:disabled{opacity:.5}
+.timerwrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.timer{font-size:1.9rem;font-weight:800;color:var(--epic);text-shadow:0 0 10px rgba(251,191,36,.5)}
+.zone{font-size:.68rem;font-weight:700;padding:3px 8px;border:1px solid;letter-spacing:.04em;white-space:nowrap}
+.zone[hidden]{display:none}
+.zone.ok{color:#4ade80;border-color:#166534;background:rgba(74,222,128,.08)}
+.zone.grace{color:#facc15;border-color:#a16207;background:rgba(250,204,21,.1);animation:zpulse 1s ease-in-out infinite}
+.zone.bad{color:#ff3b5c;border-color:#7f1d2d;background:rgba(255,59,92,.12);text-shadow:0 0 8px rgba(255,59,92,.7)}
+@keyframes zpulse{50%{opacity:.4}}
+.shieldrow{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--dim);letter-spacing:.1em}
+.pip{display:inline-block;width:22px;height:12px;margin-right:3px;background:var(--cyan);box-shadow:0 0 10px var(--cyan);border:2px solid #fff}
+.pip.lost{background:#1b1d27;box-shadow:none;border-color:#333}
+.raidbtn{width:100%;font-weight:800;letter-spacing:.15em;text-transform:uppercase;border:3px solid var(--cyan);border-radius:0;background:#0f1117;box-shadow:4px 4px 0 #000}
+.raidbtn.active{border-color:var(--pink);color:var(--pink)}
+#calBtn{width:100%;margin-top:10px;border:2px dashed #ff3b5c;color:#ff3b5c;border-radius:0;background:#0f1117;font-family:inherit;font-weight:700}
+#calBtn[hidden]{display:none}
+.brk{margin-top:12px;padding:8px 10px;border:2px dashed var(--epic);color:var(--epic);display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85rem}
+.brk[hidden]{display:none}
+.glitch{animation:gl .5s steps(2) 1}
+@keyframes gl{0%{transform:translate(-4px,2px);filter:hue-rotate(90deg)}50%{transform:translate(5px,-3px);filter:hue-rotate(-90deg) saturate(3)}100%{transform:none;filter:none}}
+/* Inventory */
+.inv{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.slot{aspect-ratio:1;border-radius:10px;background:#0f1117;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px;font-size:.62rem;line-height:1.1;text-align:center;overflow:hidden;color:var(--txt)}
+.slot.empty{box-shadow:inset 0 0 12px rgba(168,85,247,.14)}
+.slot .ic{font-size:1.6rem}
+.slot.common{border-color:var(--common);box-shadow:0 0 10px rgba(139,147,167,.4)}
+.slot.rare{border-color:var(--rare);box-shadow:0 0 12px rgba(56,189,248,.55)}
+.slot.epic{border-color:var(--epic);box-shadow:0 0 14px rgba(251,191,36,.6)}
+.slot.ultra{border-color:var(--ultra);box-shadow:0 0 16px rgba(232,121,249,.7)}
+button.slot:hover{transform:scale(1.07)}
+.invfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+/* Loot-box modal */
+#modal{position:fixed;inset:0;background:rgba(5,5,10,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+#modal.show{display:flex}
+#card{width:min(380px,92vw);min-height:300px;border-radius:20px;padding:28px 22px;text-align:center;background:#12141b;border:4px solid transparent;display:flex;flex-direction:column;justify-content:center;gap:14px;position:relative;z-index:2}
+#card.charging{background:linear-gradient(#12141b,#12141b) padding-box,linear-gradient(120deg,#ff0080,#ff8c00,#ffe600,#00ff88,#00cfff,#7a00ff,#ff0080) border-box;background-size:100% 100%,300% 300%;animation:rb .6s linear infinite,pulse .5s ease-in-out infinite alternate;box-shadow:0 0 50px rgba(168,85,247,.8)}
+@keyframes rb{to{background-position:0 0,300% 0}}
+@keyframes pulse{to{transform:scale(1.06)}}
+#card .q{font-size:5rem;font-weight:900;color:var(--purple)}
+#card .tier{font-size:.9rem;letter-spacing:.3em;text-transform:uppercase;font-weight:700}
+#card .prize{font-size:1.5rem;font-weight:700}
+#card .note{font-size:.75rem;color:var(--dim)}
+#card.common{border-color:var(--common)}
+#card.rare{border-color:var(--rare);box-shadow:0 0 36px var(--rare),inset 0 0 20px rgba(56,189,248,.3);animation:flash .35s 3}
+#card.epic{border-color:var(--epic);box-shadow:0 0 44px var(--epic)}
+#card.ultra{border-color:var(--ultra);box-shadow:0 0 70px var(--ultra)}
+#card.ultra .prize{font-size:1.9rem}
+@keyframes flash{50%{box-shadow:0 0 6px var(--rare)}}
+#giant{font-size:clamp(2rem,9vw,4.5rem);font-weight:900;line-height:1;animation:rbtxt .5s linear infinite;text-shadow:0 0 24px currentColor}
+@keyframes rbtxt{from{color:hsl(0,100%,60%)}to{color:hsl(360,100%,60%)}}
+#flash,#red{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
+#flash{mix-blend-mode:screen}
+#flash.go{animation:fl 1.4s ease-out}
+@keyframes fl{0%,40%,80%{opacity:.7;background:#f0f}20%,60%,100%{opacity:0;background:#0ff}}
+#red{background:rgba(140,0,25,.82);z-index:90}
+#red.go{animation:rf 1.1s ease-out}
+@keyframes rf{0%{opacity:1}25%{opacity:.35}45%{opacity:.9}100%{opacity:0}}
+body.shake{animation:shake .12s linear 12}
+@keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(-10px,6px)}50%{transform:translate(8px,-8px)}75%{transform:translate(-6px,-4px)}100%{transform:translate(0,0)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:#12141b;border:1px solid var(--cyan);color:var(--txt);padding:10px 18px;border-radius:12px;box-shadow:0 0 20px rgba(34,211,238,.4);opacity:0;transition:.3s;z-index:95;pointer-events:none;max-width:92vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+/* Focus Calibration modal */
+#calModal{position:fixed;inset:0;background:rgba(40,0,12,.9);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
+#calModal.show{display:flex}
+#calCard{width:min(540px,94vw);background:#12141b;border:2px solid #ff3b5c;border-radius:16px;padding:22px;box-shadow:0 0 50px rgba(255,59,92,.6);display:flex;flex-direction:column;gap:14px;font-family:"Courier New",Consolas,monospace}
+.calt{font-weight:800;color:#ff3b5c;font-size:1.05rem;text-shadow:0 0 10px rgba(255,59,92,.7)}
+.cals{color:var(--epic);font-weight:700}
+.calp{color:var(--dim);font-size:.85rem;line-height:1.45}
+.chal{user-select:none;-webkit-user-select:none;background:#0b0c10;border:1px dashed var(--cyan);padding:12px;color:var(--cyan);font-size:1rem;line-height:1.5;word-break:break-word}
+#calInput{width:100%;font:inherit;background:#0b0c10;color:var(--txt);border:2px solid var(--purple);padding:10px;border-radius:0}
+#calInput:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 12px rgba(34,211,238,.5)}
+.calbar{height:10px;background:#0b0c10;border:2px solid #e8eaf2}
+.calbar i{display:block;height:100%;background:var(--pink);box-shadow:0 0 10px var(--pink);transition:width .25s linear}
+#calMsg{min-height:1.2em;color:#ff3b5c;font-size:.85rem}
+#calCard .tools button{flex:1}
+</style>
+</head>
+<body>
+<h1>Study Gacha Reward Wheel</h1>
+<div class="grid">
+  <div class="leftcol">
+    <div class="panel left">
+      <div class="wheel-wrap"><div class="arrow"></div><canvas id="wheel"></canvas></div>
+      <button id="spin" disabled>SPIN</button>
+      <div class="lock locked" id="lockBanner"></div>
+    </div>
+
+    <div class="panel idle" id="dungeon">
+      <h2>Dungeon Monitor Pane</h2>
+      <div class="mon">
+        <canvas id="avatar" width="12" height="12"></canvas>
+        <div class="mi">
+          <div class="mname" id="monName"></div>
+          <div class="hp"><i id="hpFill"></i></div>
+          <div class="hptxt" id="hpTxt"></div>
+        </div>
+      </div>
+      <div class="drow">
+        <select id="durSel">
+          <option value="short">Short Skirmish (25-Minute Session)</option>
+          <option value="medium">Medium Raid (45-Minute Session)</option>
+          <option value="overdrive">Overdrive Boss Battle (90-Minute Session)</option>
+        </select>
+        <div class="timerwrap">
+          <div class="timer" id="timerTxt">25:00</div>
+          <div class="zone ok" id="zone" hidden></div>
+        </div>
+      </div>
+      <div class="drow">
+        <div class="shieldrow">ENERGY SHIELD <span id="shield"></span></div>
+        <div class="dim" id="rewardTxt"></div>
+      </div>
+      <button class="raidbtn" id="raid">Start Study Session</button>
+      <button id="calBtn" hidden>⚠️ Shield damaged: Focus Calibration available</button>
+      <div class="brk" id="brk" hidden>
+        <span id="brkTxt"></span>
+        <button id="brkEnd">End early</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="panel" id="tokPanel">
+      <h2>Account Spin Tokens</h2>
+      <div class="cur">
+        <div class="tok">🎟 <span id="tokens">0</span></div>
+        <div>
+          <div class="dim">Each spin costs 1 token · earned by clearing sessions</div>
+          <span class="badge" id="dbl">⚡ Double yield: off</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Daily Streak</h2>
+      <div class="streak">
+        <div class="num" id="streak">0</div>
+        <div class="tools"><button id="sUp">+1</button><button id="sDown">−1</button><button id="sReset">Reset</button></div>
+        <span class="badge" id="buff">Streak buff: needs 3+</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Pity Dashboard</h2>
+      <div class="stats">
+        <div>Spins since Ultra<br><b id="pity">0</b></div>
+        <div>Total spins<br><b id="total">0</b></div>
+        <div>Pity ×<br><b id="mult">1</b></div>
+        <div>Next doubling in<br><b id="next">50</b></div>
+      </div>
+      <div id="probs"></div>
+    </div>
+    <div class="panel">
+      <h2>Reward History</h2>
+      <ul id="hist"></ul>
+      <div class="tools" style="margin-top:10px"><button id="wipe">Reset all progress</button></div>
+    </div>
+    <div class="panel">
+      <h2>Backpack Inventory</h2>
+      <div class="inv" id="inv"></div>
+      <div class="invfoot">
+        <span class="dim" id="invCount"></span>
+        <button id="craft">⚒ Crafting Anvil</button>
+      </div>
+      <div class="dim" style="margin-top:8px">Click a card to use it. Craft 5 Common Breaks into 1 Rare Break.</div>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div id="card"></div></div>
+<div id="calModal"><div id="calCard"></div></div>
+<div id="flash"></div>
+<div id="red"></div>
+<canvas id="fx"></canvas>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============ CONFIG ============ */
+const SHIELD_MAX = 3, INV_SLOTS = 16, CRAFT_COST = 5;
+const GRACE_MS = 15000;   // tab-away grace window
+const CAL_MS = 30000;     // calibration typing window (clock pauses meanwhile)
+const TIERS = {
+  common:{name:"Common",color:"#8b93a7",prizes:["5-Min Stretch","Hydration Break","1 Gacha Token Refund"]},
+  rare:{name:"Rare",color:"#38bdf8",prizes:["30-Min Anime Break","Favorite Snack Unlock","Double Token Yield for next session"]},
+  epic:{name:"Epic",color:"#fbbf24",prizes:["Rest of the Evening Off","Order Favorite Cheat Meal"]},
+  ultra:{name:"Ultra-Rare",color:"#e879f9",prizes:["Ultimate 3-Day Weekend Break","Premium Tech Gadget Unlock"]}
+};
+// Item catalog: how each prize behaves when consumed from the backpack
+const ITEMS = {
+  "5-Min Stretch":{icon:"🧘",short:"Stretch",type:"break",mins:5},
+  "Hydration Break":{icon:"💧",short:"Hydrate",type:"break",mins:2},
+  "1 Gacha Token Refund":{icon:"🎟️",short:"Refund",type:"token",n:1},
+  "30-Min Anime Break":{icon:"📺",short:"Anime",type:"break",mins:30},
+  "Favorite Snack Unlock":{icon:"🍿",short:"Snack",type:"break",mins:10},
+  "Double Token Yield for next session":{icon:"⚡",short:"2× Yield",type:"double"},
+  "Rest of the Evening Off":{icon:"🌙",short:"Evening Off",type:"claim"},
+  "Order Favorite Cheat Meal":{icon:"🍔",short:"Cheat Meal",type:"claim"},
+  "Ultimate 3-Day Weekend Break":{icon:"🏖️",short:"3-Day Break",type:"claim"},
+  "Premium Tech Gadget Unlock":{icon:"🎮",short:"Tech Gadget",type:"claim"}
+};
+const itemInfo = n => ITEMS[n] || {icon:"❔",short:n,type:"claim"};
+// Generic study sessions: three progressive difficulty modes
+const DUN = {
+  short:{ms:25*60000, tokens:1, title:"Level 1 Sentinel",  color:"#22d3ee"},
+  medium:{ms:45*60000, tokens:3, title:"Level 2 Guardian",  color:"#a855f7"},
+  overdrive:{ms:90*60000, tokens:7, title:"Level 3 Dreadlord", color:"#ff2d6f"}
+};
+// 12x12 pixel sprites. a = body colour, b = dark, e = eyes (white)
+const SPRITES = {
+  short:[
+    "....aaaa....","...aaaaaa...","..aaaaaaaa..",".aabbbbbbaa.",
+    ".abeebbeeba.",".abeebbeeba.",".aabbbbbbaa.",".aaaaaaaaaa.",
+    "..abababab..","..aaaaaaaa..","...a....a...","..aa....aa.."],
+  medium:[
+    "a..........a","aa........aa","aaa.aaaa.aaa",".aaaaaaaaaa.",
+    ".aabbbbbbaa.",".abeebbeeba.",".abeebbeeba.",".aabbbbbbaa.",
+    "..aabbbbaa..","..aabaabaa..","...aaaaaa...","....a..a...."],
+  overdrive:[
+    "a.a..aa..a.a","aaaaaaaaaaaa",".aaaaaaaaaa.",".abbbbbbbba.",
+    ".abeebbeeba.",".abeebbeeba.",".abbbaabbba.",".abbbbbbbba.",
+    "..a.a.a.a.a.","..abababab..","...aaaaaa...","....aaaa...."]
+};
+// Calibration challenge material (plain ASCII only so every character can be typed)
+const CODE_A = ["SYS","CORE","NODE","GRID","FLUX","APEX","VOLT","ZERO"];
+const CODE_B = ["RAID","VCTR","MTRX","QBIT","DLTA","NEXA","OMGA","PRSM"];
+const PHRASES = [
+  "I willingly surrender current comfort to secure my seat at IIT Delhi",
+  "Distractions are illusions designed to derail my academic compounding",
+  "My board exam execution in February will be forged by tonight's discipline",
+  "Every focused minute today is a deposit into my future rank",
+  "Discipline is the bridge between my goals and my results",
+  "I choose the hard problem now so the exam hall feels easy later",
+  "Consistency beats intensity and I am building both tonight",
+  "My attention is my most valuable asset and I refuse to waste it",
+  "Small daily wins in mathematics compound into an unbreakable rank",
+  "I do not negotiate with distractions when the clock is running",
+  "I am training my mind to stay calm and sharp under exam pressure",
+  "Focus today removes regret tomorrow",
+  "I earn my rest by finishing the work I promised myself",
+  "Hard work done in silence will announce my results loudly",
+  "Every question I solve now is one less surprise on exam day",
+  "I protect my deep focus like a champion protects a title",
+  "Progress demands patience and I will not quit before the timer ends",
+  "Today I outwork the version of me that wanted to quit"
+];
+// 12 slices of 30°. Ultra (index 7) is flanked by Commons so near-misses can land beside it.
+const SLICES = ["common","rare","common","epic","common","rare","common","ultra","common","rare","epic","rare"];
+const SL = 360 / SLICES.length;
+const ULTRA_IDX = SLICES.indexOf("ultra");
+const KEY = "studyGachaState.v1";
+
+/* ============ STATE + PERSISTENCE ============ */
+const freshDungeon = () => ({
+  active:false, tier:"short", startAt:0, endAt:0,
+  shield:SHIELD_MAX,
+  calUsed:false,   // one Focus Calibration per session
+  pausedAt:0,      // non-zero = study clock frozen since this timestamp
+  calStage:0,      // 0 none, 1 compromise card, 2 typing challenge
+  cal:null         // {code, phrase, deadline}
+});
+const fresh = () => ({
+  pity:0, streak:0, total:0, history:[],
+  tokens:0,                 // Account Spin Tokens
+  spinUnlocked:false,       // THE LOCK: true only after a session is cleared; consumed by one spin
+  pending:null,             // {tier,prize} of a spin already clicked but not yet claimed (survives refresh)
+  inventory:[],             // backpack cards [{id,name,tier}]
+  doubleYield:false,        // next cleared session pays double tokens
+  dungeon:freshDungeon(),
+  brk:{end:0, label:""}     // active break timer
+});
+let state = fresh();
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && typeof s === "object"){
+      state = Object.assign(fresh(), s);
+      state.dungeon = Object.assign(freshDungeon(), s.dungeon || {});
+      state.brk = Object.assign(fresh().brk, s.brk || {});
+      if(state.dungeon.tier === "legendary") state.dungeon.tier = "overdrive";  // legacy save
+      if(!DUN[state.dungeon.tier]) state.dungeon.tier = "short";
+      if(!Array.isArray(state.inventory)) state.inventory = [];
+      if(!Array.isArray(state.history)) state.history = [];
+      if(typeof state.tokens !== "number" || state.tokens < 0) state.tokens = 0;
+      state.spinUnlocked = state.spinUnlocked === true;
+      if(!state.pending || !TIERS[state.pending.tier]) state.pending = null;
+      const d = state.dungeon;
+      if(!d.active || (d.calStage === 2 && (!d.cal || !d.cal.code))){ d.calStage = d.active ? 0 : 0; d.cal = null; if(!d.active) d.pausedAt = 0; }
+    }
+  }catch(e){ /* storage unavailable or corrupt: start fresh */ }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ============ PROBABILITY ENGINE ============ */
+function getProbs(){
+  const base = 0.1 + (state.streak >= 3 ? 0.05 : 0);        // streak buff
+  const mult = Math.pow(2, Math.floor(state.pity / 50));      // pity doubling
+  const ultra = Math.min(base * mult, 80.1);                  // cap so Common never goes negative
+  const common = 80 - (ultra - 0.1);                          // compensate from Common
+  return { common, rare:15, epic:4.9, ultra, mult };
+}
+function rollTier(){
+  const p = getProbs(), r = Math.random() * 100;
+  if(r < p.ultra) return "ultra";
+  if(r < p.ultra + p.epic) return "epic";
+  if(r < p.ultra + p.epic + p.rare) return "rare";
+  return "common";
+}
+const fmt = n => String(+n.toFixed(3));
+
+/* ============ AUDIO (Web Audio API) ============ */
+let ac = null;
+function audio(){
+  if(!ac){ const C = window.AudioContext || window.webkitAudioContext; if(C) ac = new C(); }
+  if(ac && ac.state === "suspended") ac.resume();
+  return ac;
+}
+function tone(f, t0, dur, type = "sine", vol = .15){
+  if(!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + .01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t0); o.stop(t0 + dur + .05);
+}
+const sfx = {
+  tick(){ if(ac) tone(1900, ac.currentTime, .035, "square", .05); },
+  suspense(){ // rising sweep during the 2s loot-box charge
+    if(!ac) return;
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = "sawtooth"; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(1400, t + 2);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.07, t + 1.8); g.gain.linearRampToValueAtTime(.0001, t + 2);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 2.05);
+  },
+  chord(high){ // soft pleasant chord progression
+    if(!ac) return;
+    const t = ac.currentTime, m = high ? 1.26 : 1;
+    [523, 659, 784].forEach(f => tone(f * m, t, .5, "triangle", .1));
+    [698, 880, 1046].forEach(f => tone(f * m, t + .35, .8, "triangle", .1));
+  },
+  fanfare(){ // rising triumphant arpeggio
+    if(!ac) return;
+    const t = ac.currentTime, steps = [0,4,7,12,16,19,24,28,31,36];
+    steps.forEach((s, i) => {
+      const f = 261.6 * Math.pow(2, s / 12);
+      tone(f, t + i * .08, .25, "sawtooth", .08);
+      tone(f * 2, t + i * .08, .2, "square", .04);
+    });
+    [0,4,7,12].forEach(s => tone(523 * Math.pow(2, s / 12), t + .9, 1.4, "sawtooth", .09));
+  },
+  crunch(){ // distorted oscillator crunch for shield damage (WaveShaper clipping)
+    if(!ac) return;
+    const t = ac.currentTime, ws = ac.createWaveShaper(), g = ac.createGain(), n = 256, curve = new Float32Array(n), k = 90;
+    for(let i = 0; i < n; i++){ const x = i * 2 / n - 1; curve[i] = (3 + k) * x * 20 * (Math.PI / 180) / (Math.PI + k * Math.abs(x)); }
+    ws.curve = curve; ws.oversample = "4x";
+    g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.0001, t + .7);
+    ws.connect(g); g.connect(ac.destination);
+    [220, 227, 110].forEach((f, i) => {
+      const o = ac.createOscillator();
+      o.type = i === 2 ? "square" : "sawtooth";
+      o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f / 4, t + .6);
+      o.connect(ws); o.start(t); o.stop(t + .7);
+    });
+    for(let i = 0; i < 8; i++) tone(80 + Math.random() * 1500, t + i * .04, .04, "square", .06);
+  },
+  deny(){ // short descending buzz for blocked actions
+    if(!ac) return;
+    const t = ac.currentTime;
+    tone(300, t, .12, "square", .08); tone(190, t + .13, .2, "square", .08);
+  }
+};
+
+/* ============ WHEEL DRAWING ============ */
+const cv = document.getElementById("wheel"), ctx = cv.getContext("2d");
+let rot = 0, size = 440;
+function resize(){
+  const dpr = window.devicePixelRatio || 1;
+  size = cv.clientWidth || 440;
+  cv.width = cv.height = Math.round(size * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+function draw(){
+  const c = size / 2, R = c - 10;
+  ctx.clearRect(0, 0, size, size);
+  ctx.save(); ctx.translate(c, c); ctx.rotate(rot * Math.PI / 180);
+  SLICES.forEach((k, i) => {
+    const a0 = (i * SL - 90) * Math.PI / 180, a1 = ((i + 1) * SL - 90) * Math.PI / 180, col = TIERS[k].color;
+    const g = ctx.createRadialGradient(0, 0, R * .2, 0, 0, R);
+    g.addColorStop(0, "#14151c"); g.addColorStop(1, col + (k === "ultra" ? "dd" : "66"));
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a1); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = "#0d0e12"; ctx.lineWidth = 2; ctx.stroke();
+    // label along the radius
+    ctx.save(); ctx.rotate((a0 + a1) / 2); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillStyle = k === "ultra" ? "#fff" : col;
+    ctx.font = "700 " + Math.round(size * .034) + "px 'Segoe UI',sans-serif";
+    ctx.shadowColor = col; ctx.shadowBlur = 8;
+    ctx.fillText(k === "ultra" ? "★ ULTRA" : TIERS[k].name.toUpperCase(), R - 14, 0);
+    ctx.restore();
+  });
+  ctx.restore();
+  // neon rim + hub
+  ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2);
+  ctx.strokeStyle = "#a855f7"; ctx.lineWidth = 5; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 16; ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.arc(c, c, size * .06, 0, Math.PI * 2);
+  ctx.fillStyle = "#0d0e12"; ctx.fill(); ctx.strokeStyle = "#22d3ee"; ctx.lineWidth = 3; ctx.stroke();
+}
+
+/* ============ SPIN LOGIC ============ */
+const spinBtn = document.getElementById("spin");
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const norm = a => ((a % 360) + 360) % 360;
+let spinning = false;
+
+function planSpin(tier){
+  let idx, target, nearMiss = false;
+  if(tier === "common" && Math.random() < .15){
+    // Near-miss: stop 1-2° outside the Ultra slice, inside a neighbouring Common slice
+    nearMiss = true;
+    const d = 1 + Math.random();
+    target = Math.random() < .5 ? ULTRA_IDX * SL - d : (ULTRA_IDX + 1) * SL + d;
+    idx = Math.floor(norm(target) / SL);
+  }else{
+    idx = pick(SLICES.map((k, i) => k === tier ? i : -1).filter(i => i >= 0));
+    target = idx * SL + 4 + Math.random() * (SL - 8);
+  }
+  // Wheel angle under the pointer = norm(-rot); solve for final rotation
+  const delta = norm(norm(-target) - norm(rot));
+  const turns = (nearMiss ? 7 : 5) + Math.floor(Math.random() * 2);
+  return { final: rot + turns * 360 + delta, nearMiss };
+}
+
+function spin(){
+  if(spinning || !state.spinUnlocked) return;          // gate 1: only a cleared session unlocks the wheel
+  if(state.tokens < 1){                                // gate 2: a spin costs exactly 1 token
+    audio(); sfx.deny();
+    toast("⚠️ INSUFFICIENT TOKENS: a spin costs 1 Spin Token.");
+    const tp = $("tokPanel"); tp.classList.remove("warn"); void tp.offsetWidth; tp.classList.add("warn");
+    return;
+  }
+  audio(); spinning = true;
+  const tier = rollTier();                             // outcome decided before animation
+  // Pay the token, consume the unlock, and store the drop so a refresh mid-spin cannot lose or duplicate it
+  state.tokens -= 1;
+  state.pending = { tier, prize: pick(TIERS[tier].prizes) };
+  state.spinUnlocked = false;
+  save(); render();
+  const { final, nearMiss } = planSpin(tier);
+  const start = rot, dur = nearMiss ? 8500 : 5200, t0 = performance.now();
+  const ease = nearMiss ? (p => 1 - Math.pow(1 - p, 5)) : (p => 1 - Math.pow(1 - p, 4)); // near-miss coasts slower at the end
+  let lastIdx = Math.floor(norm(-rot) / SL);
+  (function frame(now){
+    const p = Math.min((now - t0) / dur, 1);
+    rot = start + (final - start) * ease(p);
+    const idx = Math.floor(norm(-rot) / SL);
+    if(idx !== lastIdx){ lastIdx = idx; sfx.tick(); } // click per segment, slows with wheel
+    draw();
+    if(p < 1) requestAnimationFrame(frame);
+    else { rot = norm(rot); draw(); openLootBox(tier); }
+  })(t0);
+}
+
+/* ============ LOOT BOX REVEAL ============ */
+const modal = document.getElementById("modal"), card = document.getElementById("card");
+function openLootBox(tier){
+  modal.classList.add("show");
+  card.className = "charging";
+  card.innerHTML = '<div class="q">?</div><div class="tier" style="color:#a855f7">Opening…</div>';
+  sfx.suspense();
+  setTimeout(() => reveal(tier), 2000);   // exactly 2 seconds of anticipation
+}
+function reveal(tier){
+  const T = TIERS[tier];
+  const prize = (state.pending && state.pending.tier === tier) ? state.pending.prize : pick(T.prizes);
+  const info = itemInfo(prize);
+  card.className = tier;
+  let html = '<div class="tier" style="color:' + T.color + '">' + T.name + '</div>';
+  if(tier === "ultra") html = '<div id="giant">ULTRA-RARE!!!</div>' + html;
+  html += '<div style="font-size:3rem">' + info.icon + '</div><div class="prize">' + prize + '</div>' +
+          '<div class="note">Card added to your Backpack</div><button id="collect">Collect</button>';
+  card.innerHTML = html;
+  document.getElementById("collect").onclick = closeLootBox;
+
+  // Update state: the prize drops into the backpack as a card instead of activating
+  state.pending = null;
+  state.total++;
+  state.pity = tier === "ultra" ? 0 : state.pity + 1;
+  state.history.unshift({ t: new Date().toISOString(), tier, prize });
+  state.history = state.history.slice(0, 300);
+  state.inventory.push({ id: uid(), name: prize, tier });
+  save(); render();
+
+  // Effects + sound
+  if(tier === "common"){ sfx.chord(false); }
+  else if(tier === "rare"){ sfx.chord(false); burst(40, ["#38bdf8", "#7dd3fc"]); }
+  else if(tier === "epic"){ sfx.chord(true); burst(120, ["#fbbf24", "#f59e0b", "#fde68a"]); }
+  else {
+    sfx.fanfare();
+    burst(260, null);
+    document.body.classList.add("shake");
+    const f = document.getElementById("flash"); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
+    setTimeout(() => document.body.classList.remove("shake"), 1500);
+  }
+}
+function closeLootBox(){
+  modal.classList.remove("show");
+  spinning = false; render();            // wheel stays locked until the next cleared session
+}
+
+/* ============ PARTICLES ============ */
+const fx = document.getElementById("fx"), fctx = fx.getContext("2d");
+let parts = [], running = false;
+function burst(n, colors){
+  fx.width = innerWidth; fx.height = innerHeight;
+  const cx = innerWidth / 2, cy = innerHeight / 2;
+  for(let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 11;
+    parts.push({ x:cx, y:cy, vx:Math.cos(a) * s, vy:Math.sin(a) * s - 3, life:1, r:2 + Math.random() * 4,
+      c: colors ? pick(colors) : "hsl(" + Math.floor(Math.random() * 360) + ",100%,60%)" });
+  }
+  if(!running){ running = true; requestAnimationFrame(stepParts); }
+}
+function stepParts(){
+  fctx.clearRect(0, 0, fx.width, fx.height);
+  parts = parts.filter(p => p.life > 0);
+  parts.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += .22; p.vx *= .99; p.life -= .011;
+    fctx.globalAlpha = Math.max(p.life, 0); fctx.fillStyle = p.c;
+    fctx.shadowColor = p.c; fctx.shadowBlur = 10;
+    fctx.beginPath(); fctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); fctx.fill();
+  });
+  fctx.globalAlpha = 1;
+  if(parts.length) requestAnimationFrame(stepParts);
+  else { running = false; fctx.clearRect(0, 0, fx.width, fx.height); }
+}
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+let toastTimer = null;
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3800);
+}
+function redFlash(){ const r = $("red"); r.classList.remove("go"); void r.offsetWidth; r.classList.add("go"); }
+
+/* ============ STUDY SESSIONS (DUNGEON MONITOR) ============ */
+let avatarTier = null;
+function drawAvatar(tier){
+  if(avatarTier === tier) return;
+  avatarTier = tier;
+  const x = $("avatar").getContext("2d"), col = DUN[tier].color;
+  x.clearRect(0, 0, 12, 12);
+  SPRITES[tier].forEach((row, y) => [...row].forEach((ch, i) => {
+    if(ch === ".") return;
+    x.fillStyle = ch === "a" ? col : ch === "b" ? "#12141b" : "#ffffff";
+    x.fillRect(i, y, 1, 1);
+  }));
+  $("avatar").style.borderColor = col;
+}
+function startRaid(){
+  const d = state.dungeon;
+  if(d.active){ endRaid(false, "Session abandoned. No reward earned."); return; }
+  if(state.spinUnlocked || state.pending){ toast("🔓 Use your available pull before starting another session."); return; }
+  audio();
+  const tier = $("durSel").value, now = Date.now();
+  state.brk = { end:0, label:"" };               // a session cancels any running break
+  state.dungeon = Object.assign(freshDungeon(), { active:true, tier, startAt:now, endAt:now + DUN[tier].ms });
+  zone = "secure"; calRendered = -1;
+  save(); render();
+  toast("⚔️ " + DUN[tier].title + " engaged! Stay on this tab.");
+}
+function endRaid(won, msg){
+  const d = state.dungeon, def = DUN[d.tier];
+  clearGrace();
+  d.active = false; d.shield = SHIELD_MAX; d.calUsed = false; d.pausedAt = 0; d.calStage = 0; d.cal = null;
+  zone = "secure";
+  if(won){
+    let n = def.tokens;
+    if(state.doubleYield){ n *= 2; state.doubleYield = false; }   // Double Token Yield consumed here
+    state.tokens += n;
+    state.spinUnlocked = true;                                      // THE ONLY WAY the wheel unlocks
+    msg = "🏆 " + def.title + " defeated! +" + n + " token" + (n > 1 ? "s" : "") + " · Pull unlocked!";
+    sfx.chord(true); burst(90, ["#22d3ee", "#a855f7", "#fbbf24"]);
+  }
+  save(); render(); toast(msg);
+}
+
+/* ---- 15-second viewport grace window ---- */
+let zone = "secure";            // secure | grace | compromised  (runtime only)
+let graceTimer = null, graceStart = 0, pendingFlash = false;
+function clearGrace(){ if(graceTimer){ clearTimeout(graceTimer); graceTimer = null; } }
+function onHidden(){
+  const d = state.dungeon;
+  // Silent countdown: no alarm, no penalty yet. Not while the clock is frozen (calibration).
+  if(!d.active || d.pausedAt || graceTimer || Date.now() >= d.endAt) return;
+  zone = "grace"; graceStart = Date.now();
+  graceTimer = setTimeout(violation, GRACE_MS);
+  renderDungeon();
+}
+function onVisible(){
+  if(graceTimer){
+    clearGrace();
+    // Background timers can be throttled, so also check the wall clock
+    if(Date.now() - graceStart >= GRACE_MS) violation();
+    else { zone = "secure"; renderDungeon(); }       // returned in time: zero penalty
+  }
+  if(pendingFlash){
+    pendingFlash = false; redFlash();
+    const dg = $("dungeon"); dg.classList.remove("glitch"); void dg.offsetWidth; dg.classList.add("glitch");
+    toast("⚠️ You were away for over 15 seconds. Energy shield damaged.");
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "hidden") onHidden(); else onVisible();
+});
+function violation(){
+  clearGrace();
+  const d = state.dungeon;
+  if(!d.active || d.pausedAt || Date.now() >= d.endAt) return;
+  d.shield = Math.max(0, d.shield - 1);
+  zone = "compromised";
+  sfx.crunch();
+  if(document.visibilityState === "hidden") pendingFlash = true; else redFlash();
+  setTimeout(() => { if(zone === "compromised" && !state.dungeon.calStage){ zone = "secure"; renderDungeon(); } }, 6000);
+  if(d.calUsed){
+    // Calibration already spent this session
+    if(d.shield <= 0){ endRaid(false, "💥 Shield shattered and calibration already used. The dungeon room collapsed."); return; }
+    save(); render(); return;
+  }
+  openOffer();
+}
+
+/* ---- Shield Compromise + Focus Calibration ---- */
+function makeCode(){
+  const L = "ABCDEFGHJKLMNPQRSTUVWXYZ", N = "23456789";
+  return pick(CODE_A) + "-" + pick([...N]) + pick([...L]) + pick([...N]) + "-" + pick(CODE_B);
+}
+function openOffer(){
+  const d = state.dungeon;
+  d.calStage = 1; calRendered = -1;
+  if(d.shield <= 0 && !d.pausedAt) d.pausedAt = Date.now();   // no shield left: freeze the clock until a decision
+  save(); render();
+}
+function startCal(){
+  const d = state.dungeon;
+  if(!d.active || d.calUsed) return;
+  audio();
+  d.calUsed = true;                                           // once per session, spent on initiation
+  if(!d.pausedAt) d.pausedAt = Date.now();                    // study clock pauses while typing
+  d.cal = { code:makeCode(), phrase:pick(PHRASES), deadline:Date.now() + CAL_MS };
+  d.calStage = 2; calRendered = -1;
+  save(); render();
+}
+function declineCal(){
+  const d = state.dungeon;
+  if(d.shield <= 0){ endRaid(false, "💥 Shield shattered. The dungeon room collapsed."); return; }
+  d.calStage = 0; zone = "secure"; calRendered = -1;
+  save(); render();
+}
+function resumeClock(){
+  const d = state.dungeon;
+  if(d.pausedAt){ d.endAt += Date.now() - d.pausedAt; d.pausedAt = 0; }
+}
+function verifyCal(){
+  const d = state.dungeon;
+  if(!d.active || d.calStage !== 2 || !d.cal) return;
+  if(Date.now() >= d.cal.deadline) return;                    // tick() handles the collapse
+  const typed = $("calInput").value.trim(), want = d.cal.code + " " + d.cal.phrase;
+  if(typed === want){                                          // exact, case-sensitive match
+    resumeClock();
+    d.shield = Math.min(SHIELD_MAX, d.shield + 1);             // restore exactly 1 point
+    d.calStage = 0; d.cal = null; zone = "secure"; calRendered = -1;
+    sfx.chord(true);
+    save(); render();
+    toast("🛡️ Calibration successful! Shield " + d.shield + "/" + SHIELD_MAX + ". Clock resumed.");
+  }else{
+    sfx.deny();
+    $("calMsg").textContent = "✖ MISMATCH: check every character and retry before the window closes.";
+  }
+}
+function renderCal(){
+  const d = state.dungeon, stage = d.active ? d.calStage : 0, box = $("calModal"), cd = $("calCard");
+  if(stage !== calRendered){
+    calRendered = stage;
+    if(stage === 0){ box.classList.remove("show"); cd.innerHTML = ""; }
+    else if(stage === 1){
+      const forced = d.shield <= 0;
+      box.classList.add("show");
+      cd.innerHTML =
+        '<div class="calt">⚠️ SHIELD COMPROMISED: Initiate Focus Calibration?</div>' +
+        '<div class="cals">Energy shield: ' + d.shield + '/' + SHIELD_MAX + (forced ? ' · CLOCK FROZEN' : '') + '</div>' +
+        '<div class="calp">Type the verification string exactly to restore 1 shield point. One calibration per session. You get ' + (CAL_MS / 1000) +
+        ' seconds to type it, and your study clock pauses meanwhile. If time runs out, the terminal locks down and the dungeon room collapses.' +
+        (forced ? ' With no shield left, declining also collapses the room.' : '') + '</div>' +
+        '<div class="tools"><button id="calGo" class="raidbtn">Initiate Calibration</button><button id="calNo">' + (forced ? "Accept Collapse" : "Not now") + '</button></div>';
+      $("calGo").onclick = startCal; $("calNo").onclick = declineCal;
+    }else{
+      box.classList.add("show");
+      cd.innerHTML =
+        '<div class="calt">⚠️ SHIELD COMPROMISED: Focus Calibration</div>' +
+        '<div class="calp">Type this string exactly, case-sensitive. Pasting is disabled.</div>' +
+        '<div class="chal" id="calChal">' + esc(d.cal.code + " " + d.cal.phrase) + '</div>' +
+        '<input id="calInput" name="cal-' + uid() + '" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ' +
+        'onpaste="return false;" ondrop="return false;" oncopy="return false;" oncut="return false;" oncontextmenu="return false;" ' +
+        'placeholder="Type the string here...">' +
+        '<div class="calbar"><i id="calFill"></i></div>' +
+        '<div class="cals">Time left: <span id="calLeft">30s</span></div>' +
+        '<div id="calMsg"></div>' +
+        '<div class="tools"><button id="calVerify" class="raidbtn">Verify</button></div>';
+      const inp = $("calInput");
+      ["paste", "drop"].forEach(ev => inp.addEventListener(ev, e => e.preventDefault()));   // belt and braces
+      inp.addEventListener("keydown", e => { if(e.key === "Enter") verifyCal(); });
+      $("calVerify").onclick = verifyCal;
+      inp.focus();
+    }
+  }
+  if(stage === 2 && d.cal){
+    const left = Math.max(0, d.cal.deadline - Date.now());
+    $("calLeft").textContent = Math.ceil(left / 1000) + "s";
+    $("calFill").style.width = (left / CAL_MS * 100) + "%";
+  }
+}
+
+function renderDungeon(){
+  const d = state.dungeon, def = DUN[d.tier], now = Date.now();
+  const ref = d.pausedAt || now;                                 // frozen clock while paused
+  const remaining = d.active ? Math.max(0, d.endAt - ref) : def.ms;
+  const pct = remaining / def.ms * 100;
+  drawAvatar(d.tier);
+  $("dungeon").classList.toggle("active", d.active);
+  $("dungeon").classList.toggle("idle", !d.active);
+  $("monName").textContent = def.title;
+  $("hpFill").style.width = pct + "%";
+  $("hpTxt").textContent = "HP " + Math.ceil(pct) + "% · " + (!d.active ? "AWAITING CHALLENGER" : d.pausedAt ? "CLOCK PAUSED" : "ENGAGED");
+  $("timerTxt").textContent = mmss(remaining);
+  // viewport status badge
+  const z = $("zone");
+  if(!d.active) z.hidden = true;
+  else{
+    z.hidden = false;
+    z.className = "zone " + (zone === "grace" ? "grace" : zone === "compromised" ? "bad" : "ok");
+    z.textContent = zone === "grace" ? "🟡 AWAITING RETURN (15s Window)" : zone === "compromised" ? "🔴 TERMINAL COMPROMISED" : "🟢 ZONE SECURE";
+  }
+  let sh = ""; for(let i = 0; i < SHIELD_MAX; i++) sh += '<i class="pip' + (i < d.shield ? "" : " lost") + '"></i>';
+  $("shield").innerHTML = sh;
+  $("rewardTxt").textContent = "Reward: 🎟 ×" + (def.tokens * (state.doubleYield ? 2 : 1)) + " + 1 pull" + (state.doubleYield ? " (⚡ doubled)" : "");
+  $("durSel").value = d.tier; $("durSel").disabled = d.active;
+  const rb = $("raid"); rb.textContent = d.active ? "Abandon Session" : "Start Study Session"; rb.classList.toggle("active", d.active);
+  $("calBtn").hidden = !(d.active && d.shield < SHIELD_MAX && !d.calUsed && d.calStage === 0);
+  // break timer row
+  const b = state.brk, on = b.end > now;
+  $("brk").hidden = !on;
+  if(on) $("brkTxt").textContent = "☕ " + b.label + " · " + mmss(b.end - now);
+  renderCal();
+}
+let calRendered = -1;
+function tick(){
+  const now = Date.now(), d = state.dungeon;
+  if(d.active && d.calStage === 2 && d.cal && now >= d.cal.deadline){
+    // Typing window expired: terminal locks down, shield stays broken, the room collapses
+    sfx.crunch(); redFlash();
+    endRaid(false, "🔒 Calibration failed. Terminal locked down and the dungeon room collapsed.");
+  }
+  else if(d.active && !d.pausedAt && now >= d.endAt) endRaid(true);   // timer hit 00:00: victory
+  if(state.brk.end && now >= state.brk.end){
+    const l = state.brk.label; state.brk = { end:0, label:"" }; save();
+    sfx.chord(false); toast("⏰ " + l + " is over. Back to the arena!");
+  }
+  renderDungeon();
+}
+
+/* ============ BACKPACK + CRAFTING ============ */
+function useItem(id){
+  const i = state.inventory.findIndex(x => x.id === id);
+  if(i < 0) return;
+  const it = state.inventory[i], info = itemInfo(it.name);
+  audio();
+  if(info.type === "break"){
+    if(state.dungeon.active){ toast("Finish or abandon your session before taking a break."); return; }
+    if(state.brk.end > Date.now()){ toast("A break is already running."); return; }
+    state.brk = { end: Date.now() + info.mins * 60000, label: it.name };
+    toast("☕ " + it.name + " started (" + info.mins + " min). Enjoy!");
+    sfx.chord(false);
+  }else if(info.type === "token"){
+    state.tokens += info.n; toast("🎟 +" + info.n + " token refunded!"); sfx.chord(false);
+  }else if(info.type === "double"){
+    if(state.doubleYield){ toast("Double Token Yield is already active."); return; }
+    state.doubleYield = true; toast("⚡ Your next cleared session pays double tokens!"); sfx.chord(true);
+  }else{
+    toast("🎉 Redeemed: " + it.name + "! Go enjoy it."); sfx.chord(true); burst(80, [TIERS[it.tier].color, "#fff"]);
+  }
+  state.inventory.splice(i, 1);
+  save(); render();
+}
+const isCommonBreak = it => it.tier === "common" && itemInfo(it.name).type === "break";
+function craft(){
+  const pool = state.inventory.filter(isCommonBreak);
+  if(pool.length < CRAFT_COST) return;
+  const ids = pool.slice(0, CRAFT_COST).map(x => x.id);
+  state.inventory = state.inventory.filter(x => !ids.includes(x.id));
+  state.inventory.push({ id: uid(), name: "30-Min Anime Break", tier: "rare" });   // the Rare Break
+  audio(); sfx.chord(true); burst(60, ["#38bdf8", "#7dd3fc", "#fff"]);
+  toast("⚒ Crafted a Rare Break: 30-Min Anime Break!");
+  save(); render();
+}
+
+/* ============ DASHBOARD RENDER ============ */
+function render(){
+  const p = getProbs();
+  $("tokens").textContent = state.tokens;
+  const dbl = $("dbl"); dbl.className = "badge" + (state.doubleYield ? " on" : "");
+  dbl.textContent = state.doubleYield ? "⚡ Double yield: READY" : "⚡ Double yield: off";
+  // Spin lock state: enabled ONLY when a cleared session left an unclaimed pull
+  const ready = state.spinUnlocked && !spinning;
+  spinBtn.disabled = !ready;
+  spinBtn.classList.toggle("ready", ready);
+  const lb = $("lockBanner");
+  lb.className = "lock " + (state.spinUnlocked ? "open" : "locked");
+  lb.textContent = state.spinUnlocked ? "🔓 CORE MATRIX ENGAGED: Pull available!" : "🛑 CORE MATRIX LOCKED: Complete a Study Session to unlock spin!";
+  $("streak").textContent = state.streak;
+  const buff = $("buff");
+  buff.className = "badge" + (state.streak >= 3 ? " on" : "");
+  buff.textContent = state.streak >= 3 ? "Streak buff: +0.05% Ultra" : "Streak buff: needs 3+";
+  $("pity").textContent = state.pity;
+  $("total").textContent = state.total;
+  $("mult").textContent = "×" + p.mult;
+  $("next").textContent = 50 - (state.pity % 50);
+  $("probs").innerHTML = ["common", "rare", "epic", "ultra"].map(k =>
+    '<div class="prow"><span style="color:' + TIERS[k].color + '">' + TIERS[k].name + '</span>' +
+    '<div class="bar"><i style="width:' + Math.max(p[k], 1) + '%;background:' + TIERS[k].color + '"></i></div>' +
+    '<span>' + fmt(p[k]) + '%</span></div>').join("");
+  $("hist").innerHTML = state.history.length ? state.history.map(h =>
+    '<li><span style="color:' + TIERS[h.tier].color + '">' + TIERS[h.tier].name + ' · ' + h.prize + '</span><small>' +
+    new Date(h.t).toLocaleString([], { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) +
+    '</small></li>').join("") : '<li style="color:var(--dim)">No drops yet. Study, then spin!</li>';
+  // 4x4 inventory grid of collectible cards
+  let g = "";
+  for(let i = 0; i < INV_SLOTS; i++){
+    const it = state.inventory[i];
+    if(it){
+      const info = itemInfo(it.name);
+      g += '<button class="slot ' + it.tier + '" data-id="' + it.id + '" title="Use: ' + it.name + '"><span class="ic">' + info.icon + '</span><span>' + info.short + '</span></button>';
+    }else g += '<div class="slot empty"></div>';
+  }
+  $("inv").innerHTML = g;
+  const extra = Math.max(0, state.inventory.length - INV_SLOTS);
+  $("invCount").textContent = "Backpack: " + Math.min(state.inventory.length, INV_SLOTS) + "/" + INV_SLOTS + (extra ? " (+" + extra + " waiting for space)" : "");
+  const cb = state.inventory.filter(isCommonBreak).length;
+  $("craft").textContent = "⚒ Craft Rare Break (" + Math.min(cb, CRAFT_COST) + "/" + CRAFT_COST + " Common Breaks)";
+  $("craft").disabled = cb < CRAFT_COST;
+  renderDungeon();
+}
+
+/* ============ EVENTS ============ */
+spinBtn.onclick = spin;
+$("sUp").onclick = () => { state.streak++; save(); render(); };
+$("sDown").onclick = () => { state.streak = Math.max(0, state.streak - 1); save(); render(); };
+$("sReset").onclick = () => { state.streak = 0; save(); render(); };
+$("raid").onclick = startRaid;
+$("calBtn").onclick = () => { if(state.dungeon.active && !state.dungeon.calUsed) openOffer(); };
+$("durSel").onchange = e => { if(!state.dungeon.active){ state.dungeon.tier = e.target.value; save(); render(); } };
+$("brkEnd").onclick = () => { state.brk = { end:0, label:"" }; save(); render(); toast("Break ended. Back to work!"); };
+$("inv").onclick = e => { const b = e.target.closest("[data-id]"); if(b) useItem(b.dataset.id); };
+$("craft").onclick = craft;
+$("wipe").onclick = () => {
+  if(spinning) return;
+  if(confirm("Reset ALL progress (streak, pity, tokens, backpack, session, history)?")){ clearGrace(); zone = "secure"; state = fresh(); calRendered = -1; save(); render(); }
+};
+addEventListener("resize", () => { resize(); fx.width = innerWidth; fx.height = innerHeight; });
+
+load(); fx.width = innerWidth; fx.height = innerHeight; resize(); render();
+// A spin was clicked but the page was refreshed before the card was claimed: resume at the loot-box reveal
+if(state.pending){ spinning = true; render(); openLootBox(state.pending.tier); }
+setInterval(tick, 250);   // drives the HP bar, break timer, calibration countdown, and session completion
+tick();
+</script>
+</body>
+</html>
