@@ -54,9 +54,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #tokPanel{border-color:rgba(34,211,238,.45);box-shadow:0 0 26px rgba(34,211,238,.18)}
 #tokPanel.warn{animation:warnflash .6s ease 3}
 @keyframes warnflash{50%{box-shadow:0 0 34px #ff3b5c;border-color:#ff3b5c}}
-/* Dungeon Monitor Pane */
+/* Dungeon Focus Panel */
 #dungeon{font-family:"Courier New",Consolas,monospace}
 #dungeon h2{font-family:"Segoe UI",system-ui,sans-serif}
+.coach{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:8px 10px;border:1px solid rgba(168,85,247,.45);background:rgba(168,85,247,.08);font-weight:700;font-size:.78rem;letter-spacing:.08em;color:#d8b4fe;cursor:pointer;user-select:none}
+.sw{position:relative;display:inline-block;width:46px;height:24px;flex:none}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.slider{position:absolute;inset:0;background:#1b1d27;border:2px solid #6b4a9c;border-radius:999px;transition:.2s}
+.slider::before{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#8a90a6;transition:.2s}
+.sw input:checked + .slider{background:rgba(168,85,247,.35);border-color:var(--purple);box-shadow:0 0 14px var(--purple),0 0 28px rgba(168,85,247,.55)}
+.sw input:checked + .slider::before{transform:translateX(22px);background:#e9d5ff;box-shadow:0 0 10px #e9d5ff}
 .mon{display:flex;gap:14px;align-items:center;margin-bottom:12px}
 #avatar{width:84px;height:84px;image-rendering:pixelated;background:#0b0c10;border:3px solid var(--purple);box-shadow:4px 4px 0 #000,0 0 16px rgba(168,85,247,.55);flex:none;transition:filter .4s}
 #dungeon.idle #avatar{filter:grayscale(.85) brightness(.55)}
@@ -117,13 +124,21 @@ button.slot:hover{transform:scale(1.07)}
 #card.epic{border-color:var(--epic);box-shadow:0 0 44px var(--epic)}
 #card.ultra{border-color:var(--ultra);box-shadow:0 0 70px var(--ultra)}
 #card.ultra .prize{font-size:1.9rem}
+#card.crit{border-color:#ffd24a;background:linear-gradient(#171309,#12141b);box-shadow:0 0 90px #ffb800,inset 0 0 40px rgba(255,184,0,.25);animation:critglow .6s ease-in-out infinite alternate}
+@keyframes critglow{to{box-shadow:0 0 130px #ff8c00,inset 0 0 60px rgba(255,184,0,.4)}}
+.crit-banner{font-size:clamp(1.7rem,7vw,2.5rem);font-weight:900;line-height:1.05;color:#ffd24a;text-shadow:0 0 18px #ffb800,0 0 42px #ff8c00;animation:critpop .45s ease-in-out infinite alternate}
+@keyframes critpop{to{transform:scale(1.07)}}
 @keyframes flash{50%{box-shadow:0 0 6px var(--rare)}}
 #giant{font-size:clamp(2rem,9vw,4.5rem);font-weight:900;line-height:1;animation:rbtxt .5s linear infinite;text-shadow:0 0 24px currentColor}
 @keyframes rbtxt{from{color:hsl(0,100%,60%)}to{color:hsl(360,100%,60%)}}
-#flash,#red{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
+#flash,#gflash,#red{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
 #flash{mix-blend-mode:screen}
 #flash.go{animation:fl 1.4s ease-out}
 @keyframes fl{0%,40%,80%{opacity:.7;background:#f0f}20%,60%,100%{opacity:0;background:#0ff}}
+#gflash{mix-blend-mode:screen;z-index:84}
+#gflash.go{animation:gf 1.1s ease-out}
+@keyframes gf{0%,45%{opacity:.85;background:#ffd24a}25%,70%,100%{opacity:0;background:#fff}}
+#mx{position:fixed;inset:0;pointer-events:none;z-index:85;opacity:0}
 #red{background:rgba(140,0,25,.82);z-index:90}
 #red.go{animation:rf 1.1s ease-out}
 @keyframes rf{0%{opacity:1}25%{opacity:.35}45%{opacity:.9}100%{opacity:0}}
@@ -142,8 +157,10 @@ body.shake{animation:shake .12s linear 12}
 .chal{user-select:none;-webkit-user-select:none;background:#0b0c10;border:1px dashed var(--cyan);padding:12px;color:var(--cyan);font-size:1rem;line-height:1.5;word-break:break-word}
 #calInput{width:100%;font:inherit;background:#0b0c10;color:var(--txt);border:2px solid var(--purple);padding:10px;border-radius:0}
 #calInput:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 12px rgba(34,211,238,.5)}
+.calclock{text-align:center;font-size:2.8rem;font-weight:900;letter-spacing:.08em;color:#ff9f1c;text-shadow:0 0 14px #ff7a00,0 0 32px rgba(255,122,0,.65);animation:orflash .8s steps(2) infinite}
+@keyframes orflash{50%{opacity:.3}}
 .calbar{height:10px;background:#0b0c10;border:2px solid #e8eaf2}
-.calbar i{display:block;height:100%;background:var(--pink);box-shadow:0 0 10px var(--pink);transition:width .25s linear}
+.calbar i{display:block;height:100%;background:#ff9f1c;box-shadow:0 0 10px #ff7a00;transition:width .25s linear}
 #calMsg{min-height:1.2em;color:#ff3b5c;font-size:.85rem}
 #calCard .tools button{flex:1}
 </style>
@@ -159,7 +176,11 @@ body.shake{animation:shake .12s linear 12}
     </div>
 
     <div class="panel idle" id="dungeon">
-      <h2>Dungeon Monitor Pane</h2>
+      <h2>Dungeon Focus Panel</h2>
+      <label class="coach" for="coachTgl">
+        <span class="sw"><input type="checkbox" id="coachTgl"><span class="slider"></span></span>
+        <span>IIT-DELHI COACHING MODE</span>
+      </label>
       <div class="mon">
         <canvas id="avatar" width="12" height="12"></canvas>
         <div class="mi">
@@ -241,7 +262,9 @@ body.shake{animation:shake .12s linear 12}
 <div id="modal"><div id="card"></div></div>
 <div id="calModal"><div id="calCard"></div></div>
 <div id="flash"></div>
+<div id="gflash"></div>
 <div id="red"></div>
+<canvas id="mx"></canvas>
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 
@@ -249,8 +272,13 @@ body.shake{animation:shake .12s linear 12}
 "use strict";
 /* ============ CONFIG ============ */
 const SHIELD_MAX = 3, INV_SLOTS = 16, CRAFT_COST = 5;
-const GRACE_MS = 15000;   // tab-away grace window
-const CAL_MS = 30000;     // calibration typing window (clock pauses meanwhile)
+const GRACE_MS = 15000;     // tab-away grace window
+const CAL_MS = 90000;       // calibration typing window: 1 min 30 s (clock pauses meanwhile)
+const FAIL_TAX = 1;         // tokens lost when a session collapses
+const CRIT_CHANCE = 0.05;   // chance of a Critical Double Drop on any spin
+// Hard-mode base odds (percent). They sum to exactly 100.
+const P_BASE = { common:81.95, rare:15, epic:3, ultra:0.05 };
+const STREAK_BUFF = 0.02;   // flat bonus to the Ultra base at a 3+ streak
 const TIERS = {
   common:{name:"Common",color:"#8b93a7",prizes:["5-Min Stretch","Hydration Break","1 Gacha Token Refund"]},
   rare:{name:"Rare",color:"#38bdf8",prizes:["30-Min Anime Break","Favorite Snack Unlock","Double Token Yield for next session"]},
@@ -295,10 +323,9 @@ const SPRITES = {
 // Calibration challenge material (plain ASCII only so every character can be typed)
 const CODE_A = ["SYS","CORE","NODE","GRID","FLUX","APEX","VOLT","ZERO"];
 const CODE_B = ["RAID","VCTR","MTRX","QBIT","DLTA","NEXA","OMGA","PRSM"];
+// Generic deck (coaching mode OFF)
 const PHRASES = [
-  "I willingly surrender current comfort to secure my seat at IIT Delhi",
   "Distractions are illusions designed to derail my academic compounding",
-  "My board exam execution in February will be forged by tonight's discipline",
   "Every focused minute today is a deposit into my future rank",
   "Discipline is the bridge between my goals and my results",
   "I choose the hard problem now so the exam hall feels easy later",
@@ -315,8 +342,23 @@ const PHRASES = [
   "Progress demands patience and I will not quit before the timer ends",
   "Today I outwork the version of me that wanted to quit"
 ];
-// 12 slices of 30°. Ultra (index 7) is flanked by Commons so near-misses can land beside it.
-const SLICES = ["common","rare","common","epic","common","rare","common","ultra","common","rare","epic","rare"];
+// IIT-Delhi Coaching Mode deck (intense, competitive)
+const COACH_PHRASES = [
+  "I willingly surrender current comfort to secure my seat at IIT Delhi.",
+  "Distractions are illusions designed to derail my JEE academic compounding.",
+  "Every difficult physics and mathematics derivation I conquer builds my core capability.",
+  "My future ranks are forged by the high-intensity deep work I execute tonight.",
+  "I reject passive phone scrolling and choose active, high-intensity learning loops.",
+  "The competition is working hard; I must choose to work smarter and longer.",
+  "Autopilot behaviors end here; I am fully present to dominate this syllabus.",
+  "My board exam execution in February will be flawless because of tonight's discipline.",
+  "I treat every unsolved problem as a debt that I must repay before I rest.",
+  "Rank lists reward the student who stays focused when nobody is watching.",
+  "I trade short-term dopamine for long-term mastery of physics, chemistry and mathematics.",
+  "Today's discipline is the entry ticket to the campus I am working toward."
+];
+// 12 slices of 30°. Odds are tighter, so the wheel shows fewer Epic slices (1) and one Ultra slice flanked by Commons.
+const SLICES = ["common","rare","common","rare","common","epic","common","ultra","common","rare","common","common"];
 const SL = 360 / SLICES.length;
 const ULTRA_IDX = SLICES.indexOf("ultra");
 const KEY = "studyGachaState.v1";
@@ -334,9 +376,10 @@ const fresh = () => ({
   pity:0, streak:0, total:0, history:[],
   tokens:0,                 // Account Spin Tokens
   spinUnlocked:false,       // THE LOCK: true only after a session is cleared; consumed by one spin
-  pending:null,             // {tier,prize} of a spin already clicked but not yet claimed (survives refresh)
+  pending:null,             // {tier,prize,crit} of a spin already clicked but not yet claimed (survives refresh)
   inventory:[],             // backpack cards [{id,name,tier}]
   doubleYield:false,        // next cleared session pays double tokens
+  coaching:false,           // IIT-Delhi Coaching Mode phrase deck
   dungeon:freshDungeon(),
   brk:{end:0, label:""}     // active break timer
 });
@@ -354,21 +397,22 @@ function load(){
       if(!Array.isArray(state.history)) state.history = [];
       if(typeof state.tokens !== "number" || state.tokens < 0) state.tokens = 0;
       state.spinUnlocked = state.spinUnlocked === true;
+      state.coaching = state.coaching === true;
       if(!state.pending || !TIERS[state.pending.tier]) state.pending = null;
       const d = state.dungeon;
-      if(!d.active || (d.calStage === 2 && (!d.cal || !d.cal.code))){ d.calStage = d.active ? 0 : 0; d.cal = null; if(!d.active) d.pausedAt = 0; }
+      if(!d.active || (d.calStage === 2 && (!d.cal || !d.cal.code))){ d.calStage = 0; d.cal = null; if(!d.active) d.pausedAt = 0; }
     }
   }catch(e){ /* storage unavailable or corrupt: start fresh */ }
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 
-/* ============ PROBABILITY ENGINE ============ */
+/* ============ PROBABILITY ENGINE (HARD MODE) ============ */
 function getProbs(){
-  const base = 0.1 + (state.streak >= 3 ? 0.05 : 0);        // streak buff
-  const mult = Math.pow(2, Math.floor(state.pity / 50));      // pity doubling
-  const ultra = Math.min(base * mult, 80.1);                  // cap so Common never goes negative
-  const common = 80 - (ultra - 0.1);                          // compensate from Common
-  return { common, rare:15, epic:4.9, ultra, mult };
+  const base = P_BASE.ultra + (state.streak >= 3 ? STREAK_BUFF : 0);   // 0.05% (+0.02% streak buff = 0.07%)
+  const mult = Math.pow(2, Math.floor(state.pity / 50));                // pity doubling every 50 dry spins
+  const ultra = Math.min(base * mult, P_BASE.common + P_BASE.ultra);    // cap so Common never goes negative
+  const common = P_BASE.common - (ultra - P_BASE.ultra);                // whole increase is taken from Common
+  return { common, rare:P_BASE.rare, epic:P_BASE.epic, ultra, mult };
 }
 function rollTier(){
   const p = getProbs(), r = Math.random() * 100;
@@ -515,9 +559,9 @@ function spin(){
   }
   audio(); spinning = true;
   const tier = rollTier();                             // outcome decided before animation
-  // Pay the token, consume the unlock, and store the drop so a refresh mid-spin cannot lose or duplicate it
+  // Pay the token, consume the unlock, and store the drop (incl. the 5% critical roll) so a refresh mid-spin cannot lose or duplicate it
   state.tokens -= 1;
-  state.pending = { tier, prize: pick(TIERS[tier].prizes) };
+  state.pending = { tier, prize: pick(TIERS[tier].prizes), crit: Math.random() < CRIT_CHANCE };
   state.spinUnlocked = false;
   save(); render();
   const { final, nearMiss } = planSpin(tier);
@@ -544,25 +588,48 @@ function openLootBox(tier){
   sfx.suspense();
   setTimeout(() => reveal(tier), 2000);   // exactly 2 seconds of anticipation
 }
+// Gold falling-code "matrix" effect for Critical Drops (transparent canvas, fades trails with destination-out)
+function matrixFlash(){
+  const c = $("mx"), g = c.getContext("2d");
+  c.width = innerWidth; c.height = innerHeight; c.style.transition = "none"; c.style.opacity = 1;
+  const fs = 18, cols = Math.ceil(c.width / fs), drops = Array.from({length:cols}, () => Math.random() * -25), chars = "01ABCDEF$#%&*+<>";
+  const t0 = performance.now();
+  (function step(now){
+    g.globalCompositeOperation = "destination-out"; g.fillStyle = "rgba(0,0,0,.14)"; g.fillRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = "source-over"; g.font = fs + "px 'Courier New',monospace";
+    drops.forEach((y, i) => {
+      g.fillStyle = Math.random() < .12 ? "#fff6c0" : "#fbbf24";
+      g.fillText(chars[Math.floor(Math.random() * chars.length)], i * fs, y * fs);
+      drops[i] = (y * fs > c.height && Math.random() > .95) ? 0 : y + 1;
+    });
+    if(now - t0 < 1800) requestAnimationFrame(step);
+    else{ c.style.transition = "opacity .6s"; c.style.opacity = 0; setTimeout(() => g.clearRect(0, 0, c.width, c.height), 700); }
+  })(t0);
+}
 function reveal(tier){
   const T = TIERS[tier];
-  const prize = (state.pending && state.pending.tier === tier) ? state.pending.prize : pick(T.prizes);
-  const info = itemInfo(prize);
-  card.className = tier;
-  let html = '<div class="tier" style="color:' + T.color + '">' + T.name + '</div>';
-  if(tier === "ultra") html = '<div id="giant">ULTRA-RARE!!!</div>' + html;
-  html += '<div style="font-size:3rem">' + info.icon + '</div><div class="prize">' + prize + '</div>' +
-          '<div class="note">Card added to your Backpack</div><button id="collect">Collect</button>';
+  const pend = (state.pending && state.pending.tier === tier) ? state.pending : null;
+  const prize = pend ? pend.prize : pick(T.prizes);
+  const crit = pend ? !!pend.crit : Math.random() < CRIT_CHANCE;     // Critical Double Drop
+  const info = itemInfo(prize), copies = crit ? 2 : 1;
+  card.className = crit ? "crit" : tier;
+  let html = '';
+  if(crit) html += '<div class="crit-banner">CRITICAL HIT! DOUBLE LOOT!</div>';
+  if(tier === "ultra") html += '<div id="giant">ULTRA-RARE!!!</div>';
+  html += '<div class="tier" style="color:' + T.color + '">' + T.name + '</div>' +
+          '<div style="font-size:3rem">' + (crit ? info.icon + " " + info.icon : info.icon) + '</div>' +
+          '<div class="prize">' + prize + (crit ? " ×2" : "") + '</div>' +
+          '<div class="note">' + (crit ? "2 cards" : "Card") + ' added to your Backpack</div><button id="collect">Collect</button>';
   card.innerHTML = html;
   document.getElementById("collect").onclick = closeLootBox;
 
-  // Update state: the prize drops into the backpack as a card instead of activating
+  // Update state: the prize drops into the backpack as card(s) instead of activating
   state.pending = null;
   state.total++;
   state.pity = tier === "ultra" ? 0 : state.pity + 1;
-  state.history.unshift({ t: new Date().toISOString(), tier, prize });
+  state.history.unshift({ t: new Date().toISOString(), tier, prize, crit });
   state.history = state.history.slice(0, 300);
-  state.inventory.push({ id: uid(), name: prize, tier });
+  for(let i = 0; i < copies; i++) state.inventory.push({ id: uid(), name: prize, tier });
   save(); render();
 
   // Effects + sound
@@ -575,6 +642,12 @@ function reveal(tier){
     document.body.classList.add("shake");
     const f = document.getElementById("flash"); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
     setTimeout(() => document.body.classList.remove("shake"), 1500);
+  }
+  if(crit){
+    if(tier !== "ultra") sfx.fanfare();
+    matrixFlash();
+    const gf = $("gflash"); gf.classList.remove("go"); void gf.offsetWidth; gf.classList.add("go");
+    burst(180, ["#ffd24a", "#ffb800", "#ff8c00", "#fff6c0"]);
   }
 }
 function closeLootBox(){
@@ -617,11 +690,11 @@ const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(
 let toastTimer = null;
 function toast(msg){
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3800);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 4200);
 }
 function redFlash(){ const r = $("red"); r.classList.remove("go"); void r.offsetWidth; r.classList.add("go"); }
 
-/* ============ STUDY SESSIONS (DUNGEON MONITOR) ============ */
+/* ============ STUDY SESSIONS (DUNGEON FOCUS PANEL) ============ */
 let avatarTier = null;
 function drawAvatar(tier){
   if(avatarTier === tier) return;
@@ -647,10 +720,11 @@ function startRaid(){
   save(); render();
   toast("⚔️ " + DUN[tier].title + " engaged! Stay on this tab.");
 }
-function endRaid(won, msg){
+// Ends the current session only. Tokens, backpack and history are never wiped; a collapse costs a flat token tax.
+function endRaid(won, msg, tax){
   const d = state.dungeon, def = DUN[d.tier];
   clearGrace();
-  d.active = false; d.shield = SHIELD_MAX; d.calUsed = false; d.pausedAt = 0; d.calStage = 0; d.cal = null;
+  d.active = false; d.shield = SHIELD_MAX; d.calUsed = false; d.pausedAt = 0; d.calStage = 0; d.cal = null;   // clock + monster reset to full
   zone = "secure";
   if(won){
     let n = def.tokens;
@@ -659,6 +733,10 @@ function endRaid(won, msg){
     state.spinUnlocked = true;                                      // THE ONLY WAY the wheel unlocks
     msg = "🏆 " + def.title + " defeated! +" + n + " token" + (n > 1 ? "s" : "") + " · Pull unlocked!";
     sfx.chord(true); burst(90, ["#22d3ee", "#a855f7", "#fbbf24"]);
+  }else if(tax){
+    const before = state.tokens;
+    state.tokens = Math.max(0, state.tokens - FAIL_TAX);            // floor at 0
+    msg += state.tokens < before ? " Failure tax: -" + FAIL_TAX + " Spin Token." : " No tokens to tax.";
   }
   save(); render(); toast(msg);
 }
@@ -702,7 +780,7 @@ function violation(){
   setTimeout(() => { if(zone === "compromised" && !state.dungeon.calStage){ zone = "secure"; renderDungeon(); } }, 6000);
   if(d.calUsed){
     // Calibration already spent this session
-    if(d.shield <= 0){ endRaid(false, "💥 Shield shattered and calibration already used. The dungeon room collapsed."); return; }
+    if(d.shield <= 0){ endRaid(false, "💥 Shield shattered and calibration already used. The dungeon room collapsed.", true); return; }
     save(); render(); return;
   }
   openOffer();
@@ -716,7 +794,7 @@ function makeCode(){
 function openOffer(){
   const d = state.dungeon;
   d.calStage = 1; calRendered = -1;
-  if(d.shield <= 0 && !d.pausedAt) d.pausedAt = Date.now();   // no shield left: freeze the clock until a decision
+  if(d.shield <= 0 && !d.pausedAt) d.pausedAt = Date.now();   // no shield left: freeze the clock until a decision (last stand)
   save(); render();
 }
 function startCal(){
@@ -725,13 +803,13 @@ function startCal(){
   audio();
   d.calUsed = true;                                           // once per session, spent on initiation
   if(!d.pausedAt) d.pausedAt = Date.now();                    // study clock pauses while typing
-  d.cal = { code:makeCode(), phrase:pick(PHRASES), deadline:Date.now() + CAL_MS };
+  d.cal = { code:makeCode(), phrase:pick(state.coaching ? COACH_PHRASES : PHRASES), deadline:Date.now() + CAL_MS };
   d.calStage = 2; calRendered = -1;
   save(); render();
 }
 function declineCal(){
   const d = state.dungeon;
-  if(d.shield <= 0){ endRaid(false, "💥 Shield shattered. The dungeon room collapsed."); return; }
+  if(d.shield <= 0){ endRaid(false, "💥 Shield shattered. The dungeon room collapsed.", true); return; }
   d.calStage = 0; zone = "secure"; calRendered = -1;
   save(); render();
 }
@@ -767,22 +845,22 @@ function renderCal(){
       cd.innerHTML =
         '<div class="calt">⚠️ SHIELD COMPROMISED: Initiate Focus Calibration?</div>' +
         '<div class="cals">Energy shield: ' + d.shield + '/' + SHIELD_MAX + (forced ? ' · CLOCK FROZEN' : '') + '</div>' +
-        '<div class="calp">Type the verification string exactly to restore 1 shield point. One calibration per session. You get ' + (CAL_MS / 1000) +
-        ' seconds to type it, and your study clock pauses meanwhile. If time runs out, the terminal locks down and the dungeon room collapses.' +
-        (forced ? ' With no shield left, declining also collapses the room.' : '') + '</div>' +
+        '<div class="calp">Type the verification string exactly to restore 1 shield point. One calibration per session. You get ' + Math.floor(CAL_MS / 60000) + ' minute ' + (CAL_MS / 1000 % 60) +
+        ' seconds to type it (' + mmss(CAL_MS) + '), and your study clock pauses meanwhile. If time runs out, this session collapses and you pay a ' + FAIL_TAX + '-token failure tax. Your bank, backpack and history are kept.' +
+        (forced ? ' With no shield left, declining also collapses the session.' : '') + '</div>' +
         '<div class="tools"><button id="calGo" class="raidbtn">Initiate Calibration</button><button id="calNo">' + (forced ? "Accept Collapse" : "Not now") + '</button></div>';
       $("calGo").onclick = startCal; $("calNo").onclick = declineCal;
     }else{
       box.classList.add("show");
       cd.innerHTML =
-        '<div class="calt">⚠️ SHIELD COMPROMISED: Focus Calibration</div>' +
+        '<div class="calt">⚠️ SHIELD COMPROMISED: Focus Calibration' + (state.coaching ? ' · COACHING DECK' : '') + '</div>' +
         '<div class="calp">Type this string exactly, case-sensitive. Pasting is disabled.</div>' +
         '<div class="chal" id="calChal">' + esc(d.cal.code + " " + d.cal.phrase) + '</div>' +
         '<input id="calInput" name="cal-' + uid() + '" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ' +
         'onpaste="return false;" ondrop="return false;" oncopy="return false;" oncut="return false;" oncontextmenu="return false;" ' +
         'placeholder="Type the string here...">' +
+        '<div class="calclock" id="calClock">' + mmss(CAL_MS) + '</div>' +
         '<div class="calbar"><i id="calFill"></i></div>' +
-        '<div class="cals">Time left: <span id="calLeft">30s</span></div>' +
         '<div id="calMsg"></div>' +
         '<div class="tools"><button id="calVerify" class="raidbtn">Verify</button></div>';
       const inp = $("calInput");
@@ -794,7 +872,7 @@ function renderCal(){
   }
   if(stage === 2 && d.cal){
     const left = Math.max(0, d.cal.deadline - Date.now());
-    $("calLeft").textContent = Math.ceil(left / 1000) + "s";
+    $("calClock").textContent = mmss(left);
     $("calFill").style.width = (left / CAL_MS * 100) + "%";
   }
 }
@@ -823,6 +901,7 @@ function renderDungeon(){
   $("shield").innerHTML = sh;
   $("rewardTxt").textContent = "Reward: 🎟 ×" + (def.tokens * (state.doubleYield ? 2 : 1)) + " + 1 pull" + (state.doubleYield ? " (⚡ doubled)" : "");
   $("durSel").value = d.tier; $("durSel").disabled = d.active;
+  $("coachTgl").checked = state.coaching;
   const rb = $("raid"); rb.textContent = d.active ? "Abandon Session" : "Start Study Session"; rb.classList.toggle("active", d.active);
   $("calBtn").hidden = !(d.active && d.shield < SHIELD_MAX && !d.calUsed && d.calStage === 0);
   // break timer row
@@ -835,9 +914,9 @@ let calRendered = -1;
 function tick(){
   const now = Date.now(), d = state.dungeon;
   if(d.active && d.calStage === 2 && d.cal && now >= d.cal.deadline){
-    // Typing window expired: terminal locks down, shield stays broken, the room collapses
+    // Typing window expired: terminal locks down, the current session collapses, 1-token failure tax
     sfx.crunch(); redFlash();
-    endRaid(false, "🔒 Calibration failed. Terminal locked down and the dungeon room collapsed.");
+    endRaid(false, "🔒 Calibration window expired. Terminal locked down and this session collapsed.", true);
   }
   else if(d.active && !d.pausedAt && now >= d.endAt) endRaid(true);   // timer hit 00:00: victory
   if(state.brk.end && now >= state.brk.end){
@@ -898,7 +977,7 @@ function render(){
   $("streak").textContent = state.streak;
   const buff = $("buff");
   buff.className = "badge" + (state.streak >= 3 ? " on" : "");
-  buff.textContent = state.streak >= 3 ? "Streak buff: +0.05% Ultra" : "Streak buff: needs 3+";
+  buff.textContent = state.streak >= 3 ? "Streak buff: +" + STREAK_BUFF + "% Ultra" : "Streak buff: needs 3+";
   $("pity").textContent = state.pity;
   $("total").textContent = state.total;
   $("mult").textContent = "×" + p.mult;
@@ -908,7 +987,7 @@ function render(){
     '<div class="bar"><i style="width:' + Math.max(p[k], 1) + '%;background:' + TIERS[k].color + '"></i></div>' +
     '<span>' + fmt(p[k]) + '%</span></div>').join("");
   $("hist").innerHTML = state.history.length ? state.history.map(h =>
-    '<li><span style="color:' + TIERS[h.tier].color + '">' + TIERS[h.tier].name + ' · ' + h.prize + '</span><small>' +
+    '<li><span style="color:' + TIERS[h.tier].color + '">' + TIERS[h.tier].name + ' · ' + h.prize + (h.crit ? ' ×2 ⚡CRIT' : '') + '</span><small>' +
     new Date(h.t).toLocaleString([], { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) +
     '</small></li>').join("") : '<li style="color:var(--dim)">No drops yet. Study, then spin!</li>';
   // 4x4 inventory grid of collectible cards
@@ -936,6 +1015,10 @@ $("sDown").onclick = () => { state.streak = Math.max(0, state.streak - 1); save(
 $("sReset").onclick = () => { state.streak = 0; save(); render(); };
 $("raid").onclick = startRaid;
 $("calBtn").onclick = () => { if(state.dungeon.active && !state.dungeon.calUsed) openOffer(); };
+$("coachTgl").onchange = e => {
+  state.coaching = e.target.checked; save(); render();
+  toast(state.coaching ? "🎯 IIT-DELHI COACHING MODE ON: intense phrase deck armed." : "Coaching mode off: generic phrase deck.");
+};
 $("durSel").onchange = e => { if(!state.dungeon.active){ state.dungeon.tier = e.target.value; save(); render(); } };
 $("brkEnd").onclick = () => { state.brk = { end:0, label:"" }; save(); render(); toast("Break ended. Back to work!"); };
 $("inv").onclick = e => { const b = e.target.closest("[data-id]"); if(b) useItem(b.dataset.id); };
